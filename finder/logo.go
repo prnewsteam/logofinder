@@ -46,19 +46,6 @@ func (l *Logo) Resize(width uint, height uint) (*Logo, error) {
 	pw.SetColor("white")
 
 	mw := imagick.NewMagickWand()
-	mw.ReadImageFile(l.File)
-	_, hist := mw.GetImageHistogram()
-
-	dominant := pw
-	if len(hist) > 0 {
-		dominant = hist[len(hist)-1]
-	}
-
-	if (dominant.GetRed()*29.9 + dominant.GetGreen()*58.7 + dominant.GetBlue()*11.4) > 50 {
-		dominant.SetColor("black")
-	} else {
-		dominant.SetColor("white")
-	}
 
 	if path.Ext(filename) == ".svg" {
 		rsvg := "rsvg-convert"
@@ -70,7 +57,7 @@ func (l *Logo) Resize(width uint, height uint) (*Logo, error) {
 		cmd.Run()
 	} else {
 		imagick.ConvertImageCommand([]string{
-			"convert", filename + "[0]", "-background", dominant.GetColorAsString(), "-alpha", "remove", "-resize", fmt.Sprintf("%dx%d>", width-5, height-5), nFilename,
+			"convert", filename + "[0]", "-background", "white", "-alpha", "remove", "-resize", fmt.Sprintf("%dx%d>", width-5, height-5), nFilename,
 		})
 	}
 
@@ -111,7 +98,7 @@ func (l *Logo) Clear() {
 
 func (l *Logo) WriteResponse(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", "attachment; filename=logo.png")
+	w.Header().Set("Content-Disposition", "attachment; filename=logo." + path.Ext(l.File.Name()))
 	w.WriteHeader(http.StatusOK)
 	
 	p := make([]byte, 1024)
