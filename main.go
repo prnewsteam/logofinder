@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -21,26 +20,33 @@ func findLogo(w http.ResponseWriter, r *http.Request) {
 
 	width, err := strconv.ParseUint(query.Get("width"), 10, 64)
 	if err != nil {
-		width = 150
+		width = 0
 	}
 
 	height, err := strconv.ParseUint(query.Get("height"), 10, 64)
 	if err != nil {
-		height = 150
+		height = 0
 	}
 
 	log.Printf("start search: %s", domain)
 
 	logo, err := finder.FindLogo(domain)
+	defer logo.Clear()
 	if err != nil {
 		w.WriteHeader(404)
 		json.NewEncoder(w).Encode(map[string]interface{}{
 			"error": err.Error(),
 		})
+		return
+	}
+
+	if (width == 0 || height == 0) {
+		logo.WriteResponse(w)
 		return
 	}
 
 	rLogo, err := logo.Resize(uint(width), uint(height))
+	defer rLogo.Clear()
 	if err != nil {
 		w.WriteHeader(404)
 		json.NewEncoder(w).Encode(map[string]interface{}{
@@ -48,18 +54,6 @@ func findLogo(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	defer rLogo.Clear()
 
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", "attachment; filename=logo.png")
-	w.WriteHeader(http.StatusOK)
-
-	p := make([]byte, 1024)
-	for {
-		n, err := rLogo.File.Read(p)
-		if err == io.EOF {
-			break
-		}
-		w.Write(p[:n])
-	}
+	rLogo.WriteResponse(w)
 }

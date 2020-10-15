@@ -128,6 +128,7 @@ func newDocumentFromUrl(url string) (*goquery.Document, *[]*css.ComputedStylePro
 			},
 		),
 	); err != nil {
+		log.Printf("Error fetching body: %s", err)
 		return nil, nil, err
 	}
 

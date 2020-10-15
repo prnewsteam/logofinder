@@ -3,6 +3,8 @@ package finder
 import (
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
@@ -107,6 +109,20 @@ func (l *Logo) Clear() {
 	os.Remove(path.Dir(l.File.Name()));
 }
 
+func (l *Logo) WriteResponse(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", "attachment; filename=logo.png")
+	w.WriteHeader(http.StatusOK)
+	
+	p := make([]byte, 1024)
+	for {
+		n, err := l.File.Read(p)
+		if err == io.EOF{
+			break
+		}
+		w.Write(p[:n])
+	}
+}
 
 func NewLogoFromUrl(url, domain string) (*Logo, error) {
 	ext := strings.Split(path.Ext(url), "?")
