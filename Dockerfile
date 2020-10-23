@@ -12,6 +12,6 @@ WORKDIR /go/github.com/prnewsteam/logofinder
 RUN go mod download
 RUN go install
 
-EXPOSE 8099
+EXPOSE 9000
 
 ENTRYPOINT ["/go/bin/logofinder"]

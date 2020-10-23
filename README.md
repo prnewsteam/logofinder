@@ -12,7 +12,7 @@ go build main.go
 
 ```
 docker build -t logofinder .
-docker run -it -p 80:8099 logofinder
+docker run -it -p 80:9000 logofinder
 ```
 
 ## Api

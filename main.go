@@ -11,7 +11,7 @@ import (
 
 func main() {
 	http.HandleFunc("/logo", findLogo)
-	http.ListenAndServe(":8099", nil)
+	http.ListenAndServe(":9000", nil)
 }
 
 func findLogo(w http.ResponseWriter, r *http.Request) {

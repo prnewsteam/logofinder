@@ -10,6 +10,7 @@ import (
 	"path"
 	"strconv"
 	"strings"
+	"math"
 
 	"github.com/prnewsteam/logofinder/helper"
 	"gopkg.in/gographics/imagick.v2/imagick"
@@ -23,13 +24,57 @@ func (l *Logo) Close() {
 	l.File.Close()
 }
 
-func (l *Logo) Resize(width uint, height uint) (*Logo, error) {
-	imagick.Initialize()
-	// Schedule cleanup
-	defer imagick.Terminate()
-	var err error
+func DefineWidthHeight(filename string, maxWidth uint, maxHeight uint) (uint, uint, error) {
 
-	filename := l.File.Name()
+    mw := imagick.NewMagickWand()
+    defer mw.Destroy()
+
+    if err := mw.ReadImage(filename); err != nil {
+        return 0, 0, err
+    }
+
+    origWidth := uint(mw.GetImageWidth())
+    origHeight := uint(mw.GetImageHeight())
+    horizontal := origWidth > origHeight
+    widthRatio := float64(1)
+    heightRatio := float64(1)
+
+    if origWidth < maxWidth {
+        if horizontal {
+            widthRatio = float64(origWidth) / float64(maxWidth)
+        } else {
+            widthRatio = float64(maxWidth)
+        }
+    }
+
+    if origHeight < maxHeight {
+        if horizontal == false {
+            heightRatio = float64(origHeight) / float64(maxHeight)
+
+        } else {
+            heightRatio = float64(maxHeight)
+        }
+    }
+
+    ratio := math.Min(widthRatio, heightRatio)
+    return uint(float64(maxWidth) * ratio), uint(float64(maxHeight) * ratio), nil
+}
+
+func (l *Logo) Resize(width uint, height uint) (*Logo, error) {
+
+    var err error
+
+    filename := l.File.Name()
+
+    imagick.Initialize()
+    defer imagick.Terminate()
+
+    width, height, err = DefineWidthHeight(filename, width, height)
+
+    if err != nil {
+        return nil, err
+    }
+
 	nFilename := path.Join(
 		path.Dir(filename),
 		fmt.Sprintf("logo_%dx%d", width, height),
@@ -46,6 +91,7 @@ func (l *Logo) Resize(width uint, height uint) (*Logo, error) {
 	pw.SetColor("white")
 
 	mw := imagick.NewMagickWand()
+    defer mw.Destroy()
 
 	if path.Ext(filename) == ".svg" {
 		rsvg := "rsvg-convert"
@@ -55,9 +101,18 @@ func (l *Logo) Resize(width uint, height uint) (*Logo, error) {
 		defer file.Close()
 		cmd.Stdout = file
 		cmd.Run()
+
 	} else {
 		imagick.ConvertImageCommand([]string{
-			"convert", filename + "[0]", "-background", "white", "-alpha", "remove", "-resize", fmt.Sprintf("%dx%d>", width-5, height-5), nFilename,
+			"convert", filename + "[0]",
+			"-background", "white",
+			"-alpha", "remove",
+			"-define", "jpeg:fancy-upsampling=off",
+			"-define", "png:compression-filter=5",
+            "-define", "png:compression-level=9",
+            "-define", "png:compression-strategy=1",
+            "-define", "png:exclude-chunk=all",
+			"-resize", fmt.Sprintf("%dx%d>", width-5, height-5), nFilename,
 		})
 	}
 
