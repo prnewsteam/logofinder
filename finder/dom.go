@@ -114,19 +114,18 @@ func newDocumentFromUrl(url string) (*goquery.Document, *[]*css.ComputedStylePro
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
 	html := "<html></html>"
 	style := []*css.ComputedStyleProperty{}
 	if err := chromedp.Run(
 		ctx,
-		runWithTimeOut(
-			&ctx,
-			10,
-			chromedp.Tasks{
-				chromedp.Navigate(url),
-				chromedp.OuterHTML("html", &html),
-				chromedp.ComputedStyle("img[src*='logo'], img[data-src*='logo'], [id*='logo'], [class*='logo']", &style),
-			},
-		),
+		chromedp.Tasks{
+			chromedp.Navigate(url),
+			chromedp.OuterHTML("html", &html),
+			chromedp.ComputedStyle("img[src*='logo'], img[data-src*='logo'], [id*='logo'], [class*='logo']", &style),
+		},
 	); err != nil {
 		log.Printf("Error fetching body: %s", err)
 		return nil, nil, err
@@ -142,12 +141,4 @@ func newDocumentFromUrl(url string) (*goquery.Document, *[]*css.ComputedStylePro
 	log.Printf("Parsed body: %s", url)
 
 	return doc, &style, nil
-}
-
-func runWithTimeOut(ctx *context.Context, timeout time.Duration, tasks chromedp.Tasks) chromedp.ActionFunc {
-	return func(ctx context.Context) error {
-		timeoutContext, cancel := context.WithTimeout(ctx, timeout*time.Second)
-		defer cancel()
-		return tasks.Do(timeoutContext)
-	}
 }
